@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify you are human</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    background: #f7f7f7;
+    color: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 640px;
+    padding: 48px 20px;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+  .subtitle {
+    color: #666;
+    font-size: 15px;
+    margin: 0 0 36px;
+  }
+
+  /* reCAPTCHA-style widget */
+  .recaptcha {
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #d3d3d3;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    width: 304px;
+    height: 78px;
+    padding: 0 14px;
+    user-select: none;
+  }
+
+  .checkbox-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-right: 14px;
+  }
+
+  .checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #c1c1c1;
+    border-radius: 2px;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: border-color .15s ease;
+  }
+  .checkbox:hover { border-color: #b0b0b0; }
+
+  /* spinner */
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #4285f4;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* checkmark */
+  .checkmark {
+    width: 26px;
+    height: 26px;
+    display: none;
+  }
+  .checkmark svg { width: 100%; height: 100%; }
+
+  .label {
+    flex: 1;
+    text-align: left;
+    font-size: 15px;
+    color: #000;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-left: 8px;
+  }
+  .brand .logo {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 6px;
+  }
+  .brand .logo svg { width: 100%; height: 100%; }
+  .brand .txt {
+    font-size: 10px;
+    color: #9b9b9b;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  /* instructions panel */
+  .instructions {
+    display: none;
+    margin: 34px auto 0;
+    max-width: 460px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 24px 26px;
+    text-align: left;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  }
+  .instructions h2 {
+    font-size: 17px;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .instructions .lead {
+    font-size: 14px;
+    color: #555;
+    margin: 0 0 18px;
+  }
+  .steps {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 15px;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before {
+    content: counter(step);
+    flex: 0 0 26px;
+    height: 26px;
+    background: #4285f4;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  kbd {
+    background: #f1f3f4;
+    border: 1px solid #dadce0;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 13px;
+    color: #202124;
+  }
+  .copied-note {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #137333;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* training disclaimer */
+  .training-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #202124;
+    color: #fdd835;
+    font-size: 12px;
+    padding: 8px 14px;
+    text-align: center;
+    letter-spacing: .3px;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>Verify you are human</h1>
+    <p class="subtitle">Complete the action below to prove you are not a robot and continue.</p>
+
+    <div class="recaptcha" id="widget">
+      <div class="checkbox-wrap">
+        <div class="checkbox" id="checkbox" role="checkbox" aria-checked="false" tabindex="0"></div>
+        <div class="spinner" id="spinner"></div>
+        <div class="checkmark" id="checkmark">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 6L9 17l-5-5" stroke="#137333" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="label">I'm not a robot</div>
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#1c3aa9" d="M24 4a20 20 0 0 0-14 5.9l6.4 6.4A11 11 0 0 1 24 13V4z"/>
+            <path fill="#4285f4" d="M44 24a20 20 0 0 0-6-14.2L31.6 16A11 11 0 0 1 35 24h9z"/>
+            <path fill="#abbffb" d="M24 44a20 20 0 0 0 14-5.9l-6.4-6.4A11 11 0 0 1 24 35v9z"/>
+            <path fill="#1c3aa9" d="M4 24a20 20 0 0 0 6 14.2L16.4 32A11 11 0 0 1 13 24H4z"/>
+          </svg>
+        </div>
+        <div class="txt">reCAPTCHA<br><span style="font-size:9px;">Privacy · Terms</span></div>
+      </div>
+    </div>
+
+    <div class="instructions" id="instructions">
+      <h2>🔐 One more step to verify</h2>
+      <p class="lead">To finish verification, complete the following steps on your keyboard:</p>
+      <ol class="steps">
+        <li>Press <kbd>Win</kbd> + <kbd>X</kbd></li>
+        <li>Press <kbd>Shift</kbd> + <kbd>I</kbd></li>
+        <li>Press <kbd>Ctrl</kbd> + <kbd>V</kbd> to paste</li>
+        <li>Press <kbd>Enter</kbd></li>
+      </ol>
+      <div class="copied-note">
+        <span>✓</span> Verification ID copied to clipboard
+      </div>
+    </div>
+  </div>
+
+  <div class="training-banner">
+    ⚠ PHISHING AWARENESS TRAINING SIMULATION — This is a safe demo. No real command runs. If you reached these steps in a real scenario, you would have been compromised.
+  </div>
+
+<script>
+  // Placeholder payload — harmless text only. This is a training simulation.
+  const PAYLOAD = "script here";
+
+  const checkbox = document.getElementById('checkbox');
+  const spinner = document.getElementById('spinner');
+  const checkmark = document.getElementById('checkmark');
+  const instructions = document.getElementById('instructions');
+
+  let triggered = false;
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(fallbackCopy.bind(null, text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function trigger() {
+    if (triggered) return;
+    triggered = true;
+
+    // show spinner (fake "verifying" delay)
+    checkbox.style.display = 'none';
+    spinner.style.display = 'block';
+
+    setTimeout(function () {
+      spinner.style.display = 'none';
+      checkmark.style.display = 'block';
+
+      // copy placeholder payload to clipboard
+      copyToClipboard(PAYLOAD);
+
+      // reveal paste-and-run instructions
+      instructions.style.display = 'block';
+      checkbox.setAttribute('aria-checked', 'true');
+    }, 900);
+  }
+
+  checkbox.addEventListener('click', trigger);
+  checkbox.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); trigger(); }
+  });
+</script>
+</body>
+</html>
