@@ -1,0 +1,6 @@
+# Build artifacts and runtime output — regenerated per exercise, not source
+verify.exe
+*.exe
+payload.zip
+*.zip
+callbacks.log
